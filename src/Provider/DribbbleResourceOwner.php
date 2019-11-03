@@ -64,6 +64,16 @@ class DribbbleResourceOwner implements ResourceOwnerInterface
     }
 
     /**
+     * Returns email address of the resource owner
+     *
+     * @return string|null
+     */
+    public function getEmail()
+    {
+        return $this->getValueByKey($this->response, 'email');
+    }
+
+    /**
      * Get resource owner html url
      * @return string
      */
