@@ -1,9 +1,9 @@
 <?php
+
 namespace CrewLabs\OAuth2\Client\Provider;
 
 use League\OAuth2\Client\Provider\AbstractProvider;
 use League\OAuth2\Client\Provider\Exception\IdentityProviderException;
-use League\OAuth2\Client\Provider\ResourceOwnerInterface;
 use League\OAuth2\Client\Token\AccessToken;
 use League\OAuth2\Client\Tool\BearerAuthorizationTrait;
 use Psr\Http\Message\ResponseInterface;
@@ -11,6 +11,13 @@ use Psr\Http\Message\ResponseInterface;
 class Dribbble extends AbstractProvider
 {
     use BearerAuthorizationTrait;
+
+
+    /**
+     * @var array List of scopes that will be used for authentication.
+     * @link https://developer.dribbble.com/v2/oauth/#scopes
+     */
+    protected $scopes = [];
 
     /**
      * Get authorization url to begin OAuth flow
@@ -46,6 +53,18 @@ class Dribbble extends AbstractProvider
         return 'https://api.dribbble.com/v2/user?' . http_build_query(['access_token' => $token->getToken()]);
     }
 
+    protected function getAuthorizationParameters(array $options)
+    {
+
+        // Additional scopes MAY be added by constructor or option.
+        $scopes = array_merge($this->getDefaultScopes(), $this->scopes);
+        if (!empty($options['scope'])) {
+            $scopes = array_merge($scopes, $options['scope']);
+        }
+        $options['scope'] = array_unique($scopes);
+        return parent::getAuthorizationParameters($options);
+    }
+
     /**
      * Get the default scopes used by this provider.
      *
@@ -57,25 +76,30 @@ class Dribbble extends AbstractProvider
     }
 
     /**
-     * Check a provider response for errors.
-     *
-     * @param ResponseInterface $response
-     * @param array|string $data
-     *
-     * @throws IdentityProviderException
+     * Returns the string that should be used to separate scopes when building
+     * the URL for requesting an access token.
+     * @return string Scope separator
      */
-    protected function checkResponse(ResponseInterface $response, $data)
+    protected function getScopeSeparator()
     {
-        if ($response->getStatusCode() >= 400) {
-            $errorString = (isset($data['error'])) ? $data['error'] : $response->getReasonPhrase();
-            throw new IdentityProviderException(
-                $errorString,
-                $response->getStatusCode(),
-                $response
-            );
-        }
+        return ' ';
     }
 
+    protected function checkResponse(ResponseInterface $response, $data)
+    {
+        // @codeCoverageIgnoreStart
+        if (empty($data['error'])) {
+            return;
+        }
+        // @codeCoverageIgnoreEnd
+        $code = 0;
+        $error = $data['error'];
+        if (is_array($error)) {
+            $code = $error['code'];
+            $error = $error['message'];
+        }
+        throw new IdentityProviderException($error, $code, $data);
+    }
     /**
      * Generate a user object from a successful user details request.
      *
